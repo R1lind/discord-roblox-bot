@@ -8,6 +8,11 @@ module.exports = {
         .setName('verify')
         .setDescription('Verify your Roblox account to link it to your Discord.'),
     async execute(interaction) {
+        // --- SECURITY CHECK: Ensure command is only used in the authorized server ---
+        if (interaction.guild.id !== process.env.DISCORD_GUILD_ID) {
+            return await interaction.reply({ content: 'This command cannot be used here.', flags: [MessageFlags.Ephemeral] });
+        }
+
         const userId = interaction.user.id;
         const verificationCode = uuidv4().substring(0, 8).toUpperCase();
 

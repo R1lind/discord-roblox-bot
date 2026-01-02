@@ -7,15 +7,19 @@ const { db } = require('../database.js'); // Import the database
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('updateroles')
-        .setDescription('Updates your Discord roles based on your verified Roblox account.'), // No longer needs a username option
+        .setDescription('Updates your Discord roles based on your verified Roblox account.'),
     async execute(interaction) {
+        // --- SECURITY CHECK: Ensure command is only used in the authorized server ---
+        if (interaction.guild.id !== process.env.DISCORD_GUILD_ID) {
+            return await interaction.reply({ content: 'This command cannot be used here.', flags: [MessageFlags.Ephemeral] });
+        }
+
         await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
         const userId = interaction.user.id;
         const member = interaction.member;
         const groupId = 34630184; // Your group ID
 
         // --- DATABASE LOOKUP LOGIC ---
-        // Find the user in the database
         const stmt = db.prepare('SELECT * FROM verified_users WHERE discord_id = ?');
         const userData = stmt.get(userId);
 

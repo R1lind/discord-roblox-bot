@@ -12,6 +12,11 @@ module.exports = {
                 .setDescription('Your Roblox username')
                 .setRequired(true)),
     async execute(interaction) {
+        // --- SECURITY CHECK: Ensure command is only used in the authorized server ---
+        if (interaction.guild.id !== process.env.DISCORD_GUILD_ID) {
+            return await interaction.reply({ content: 'This command cannot be used here.', flags: [MessageFlags.Ephemeral] });
+        }
+
         const userId = interaction.user.id;
         const robloxUsername = interaction.options.getString('username');
 
@@ -29,7 +34,6 @@ module.exports = {
                 pendingVerifications.delete(userId);
 
                 // --- DATABASE SAVE LOGIC ---
-                // Save the verification to the database
                 const stmt = db.prepare('INSERT OR REPLACE INTO verified_users (discord_id, roblox_id, roblox_username) VALUES (?, ?, ?)');
                 stmt.run(userId, robloxId, robloxUsername);
                 console.log(`[DATABASE] Saved verification for ${interaction.user.tag} -> ${robloxUsername}`);
