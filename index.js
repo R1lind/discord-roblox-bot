@@ -56,10 +56,6 @@ for (const file of commandFiles) {
 // When the client is ready, run this code (only once)
 client.once(Events.ClientReady, c => {
     console.log(`Ready! Logged in as ${c.user.tag}`);
-    console.log(`Bot is in ${c.guilds.cache.size} servers`);
-    c.guilds.cache.forEach(guild => {
-        console.log(`- ${guild.name} (ID: ${guild.id})`);
-    });
 });
 
 // Handle new member join
@@ -94,8 +90,8 @@ client.on(Events.InteractionCreate, async interaction => {
     } catch (error) {
         console.error(error);
         // --- GRACEFUL ERROR HANDLING ---
-        // Check if the error is about an already acknowledged interaction
-        if (error.code === 40060 || error.code === 'InteractionHasAlreadyBeenReplied' || error.code === 'UnknownInteraction' || error.message.includes('Interaction has already been acknowledged')) {
+        // If the interaction is unknown (timed out), we can't reply. Just log it.
+        if (error.code === 'InteractionHasAlreadyBeenReplied' || error.code === 'UnknownInteraction') {
             console.log(`[INFO] Interaction timed out or was already handled for ${interaction.commandName}. Ignoring.`);
             return;
         }
