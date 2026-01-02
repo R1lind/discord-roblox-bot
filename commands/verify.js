@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { v4: uuidv4 } = require('uuid');
+const { db } = require('../database.js'); // Import database
 
 const pendingVerifications = new Map();
 
@@ -8,12 +9,22 @@ module.exports = {
         .setName('verify')
         .setDescription('Verify your Roblox account to link it to your Discord.'),
     async execute(interaction) {
-        // --- SECURITY CHECK: Ensure command is only used in the authorized server ---
+        // --- SECURITY CHECK ---
         if (interaction.guild.id !== process.env.DISCORD_GUILD_ID) {
             return await interaction.reply({ content: 'This command cannot be used here.', flags: [MessageFlags.Ephemeral] });
         }
 
         const userId = interaction.user.id;
+
+        // --- CHECK IF ALREADY VERIFIED ---
+        const stmt = db.prepare('SELECT 1 FROM verified_users WHERE discord_id = ?');
+        const isVerified = stmt.get(userId);
+
+        if (isVerified) {
+            return await interaction.reply({ content: 'You are already verified.', flags: [MessageFlags.Ephemeral] });
+        }
+        // --- END CHECK ---
+
         const verificationCode = uuidv4().substring(0, 8).toUpperCase();
 
         pendingVerifications.set(userId, {

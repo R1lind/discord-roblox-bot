@@ -1,7 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const noblox = require('noblox.js');
 const { pendingVerifications } = require('./verify');
-const { db } = require('../database.js'); // Import the database
+const { db } = require('../database.js');
+const config = require('../config.json'); // Import config
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -12,7 +13,7 @@ module.exports = {
                 .setDescription('Your Roblox username')
                 .setRequired(true)),
     async execute(interaction) {
-        // --- SECURITY CHECK: Ensure command is only used in the authorized server ---
+        // --- SECURITY CHECK ---
         if (interaction.guild.id !== process.env.DISCORD_GUILD_ID) {
             return await interaction.reply({ content: 'This command cannot be used here.', flags: [MessageFlags.Ephemeral] });
         }
@@ -38,6 +39,21 @@ module.exports = {
                 stmt.run(userId, robloxId, robloxUsername);
                 console.log(`[DATABASE] Saved verification for ${interaction.user.tag} -> ${robloxUsername}`);
                 // --- END DATABASE SAVE LOGIC ---
+
+                // --- ROLE ASSIGNMENT LOGIC ---
+                const member = interaction.member;
+                const verifiedRole = interaction.guild.roles.cache.get(config.verifiedRole);
+                const defaultRole = interaction.guild.roles.cache.get(config.defaultRole);
+
+                if (verifiedRole) {
+                    await member.roles.add(verifiedRole);
+                    console.log(`[ROLE] Added 'Verified' role to ${member.user.tag}`);
+                }
+                if (defaultRole && member.roles.cache.has(defaultRole.id)) {
+                    await member.roles.remove(defaultRole);
+                    console.log(`[ROLE] Removed 'Outsider' role from ${member.user.tag}`);
+                }
+                // --- END ROLE ASSIGNMENT LOGIC ---
 
                 const embed = new EmbedBuilder()
                     .setTitle('Verification Successful!')
