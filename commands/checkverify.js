@@ -1,8 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const noblox = require('noblox.js');
-const { pendingVerifications } = require('./verify');
+const { pendingVerifications } = require('./verificationStore'); // Import from our new store
 const { db } = require('../database.js');
-const config = require('../config.json'); // Import config
+const config = require('../config.json');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -21,15 +21,21 @@ module.exports = {
         const userId = interaction.user.id;
         const robloxUsername = interaction.options.getString('username');
 
+        console.log(`[CHECKVERIFY] User ${interaction.user.tag} is checking verification with username ${robloxUsername}`);
+
         if (!pendingVerifications.has(userId)) {
+            console.log(`[CHECKVERIFY] No pending verification for user ${userId}`);
             return await interaction.reply({ content: 'You have no pending verification. Please run `/verify` first.', flags: [MessageFlags.Ephemeral] });
         }
 
         const verification = pendingVerifications.get(userId);
+        console.log(`[CHECKVERIFY] Found verification code ${verification.code} for user ${userId}`);
 
         try {
             const robloxId = await noblox.getIdFromUsername(robloxUsername);
             const userInfo = await noblox.getPlayerInfo(robloxId);
+
+            console.log(`[CHECKVERIFY] Checking if code ${verification.code} is in profile for ${robloxUsername}`);
 
             if (userInfo.blurb && userInfo.blurb.includes(verification.code)) {
                 pendingVerifications.delete(userId);
@@ -62,6 +68,7 @@ module.exports = {
                     .addFields({ name: 'Next Step', value: 'Use `/updateroles` to get your group roles.' });
                 return await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
             } else {
+                console.log(`[CHECKVERIFY] Code not found in profile. User's blurb: ${userInfo.blurb}`);
                 const embed = new EmbedBuilder()
                     .setTitle('Verification Failed')
                     .setColor(0xFF0000)

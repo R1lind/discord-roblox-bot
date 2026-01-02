@@ -1,8 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { v4: uuidv4 } = require('uuid');
-const { db } = require('../database.js'); // Import database
-
-const pendingVerifications = new Map();
+const { db } = require('../database.js');
+const { pendingVerifications } = require('./verificationStore'); // Import from our new store
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -25,12 +24,19 @@ module.exports = {
         }
         // --- END CHECK ---
 
+        // Remove any existing verification for this user
+        if (pendingVerifications.has(userId)) {
+            pendingVerifications.delete(userId);
+        }
+
         const verificationCode = uuidv4().substring(0, 8).toUpperCase();
 
         pendingVerifications.set(userId, {
             code: verificationCode,
             timestamp: Date.now(),
         });
+
+        console.log(`[VERIFY] Generated code ${verificationCode} for user ${interaction.user.tag}`);
 
         const embed = new EmbedBuilder()
             .setTitle('Roblox Verification')
@@ -44,11 +50,12 @@ module.exports = {
 
         await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
 
+        // Set a timeout to remove the verification code after 10 minutes
         setTimeout(() => {
             if (pendingVerifications.has(userId)) {
+                console.log(`[VERIFY] Expired verification code for user ${userId}`);
                 pendingVerifications.delete(userId);
             }
         }, 10 * 60 * 1000);
     },
-    pendingVerifications,
 };

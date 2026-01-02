@@ -14,6 +14,12 @@ module.exports = {
             return await interaction.reply({ content: 'This command cannot be used here.', flags: [MessageFlags.Ephemeral] });
         }
 
+        // Check if interaction is already acknowledged
+        if (interaction.replied || interaction.deferred) {
+            console.log('[DEBUG] Interaction already acknowledged, cannot defer');
+            return;
+        }
+        
         // --- SAFER DEFER ---
         try {
             await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
