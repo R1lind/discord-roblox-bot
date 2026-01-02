@@ -1,5 +1,5 @@
-const express = require('express'); // ADD THIS LINE
-const app = express(); // ADD THIS LINE
+const express = require('express');
+const app = express();
 const { Client, GatewayIntentBits, Events, Collection, MessageFlags } = require('discord.js');
 const noblox = require('noblox.js');
 const fs = require('node:fs');
@@ -9,14 +9,11 @@ const { db, setupDatabase } = require('./database.js');
 require('dotenv').config();
 
 // --- WEB SERVER SETUP ---
-// Render needs a web server to know your app is running correctly.
-// This simple server won't interfere with your bot.
-const port = process.env.PORT || 3000; // Use the port Render provides, or 3000 for local testing
+const port = process.env.PORT || 3000;
 app.get('/', (req, res) => {
-  res.send('Bot is running!'); // A simple health check endpoint
+  res.send('Bot is running!');
 });
 // --- END WEB SERVER SETUP ---
-
 
 // Create a new client instance
 const client = new Client({
@@ -92,7 +89,28 @@ client.on(Events.InteractionCreate, async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
-        await interaction.reply({ content: 'There was an error while executing this command!', flags: [MessageFlags.Ephemeral] });
+        // --- GRACEFUL ERROR HANDLING ---
+        // If the interaction is unknown (timed out), we can't reply. Just log it.
+        if (error.code === 'InteractionHasAlreadyBeenReplied' || error.code === 'UnknownInteraction') {
+            console.log(`[INFO] Interaction timed out or was already handled for ${interaction.commandName}. Ignoring.`);
+            return;
+        }
+
+        // For other errors, try to reply if possible.
+        if (interaction.replied || interaction.deferred) {
+            try {
+                await interaction.followUp({ content: 'There was an error while executing this command!', flags: [MessageFlags.Ephemeral] });
+            } catch (followUpError) {
+                console.error('Failed to send follow-up error message:', followUpError);
+            }
+        } else {
+            try {
+                await interaction.reply({ content: 'There was an error while executing this command!', flags: [MessageFlags.Ephemeral] });
+            } catch (replyError) {
+                console.error('Failed to send initial error message:', replyError);
+            }
+        }
+        // --- END GRACEFUL ERROR HANDLING ---
     }
 });
 
@@ -100,7 +118,6 @@ client.on(Events.InteractionCreate, async interaction => {
 client.login(process.env.DISCORD_TOKEN);
 
 // --- START WEB SERVER ---
-// This starts the web server, which must be done after the bot logs in.
 app.listen(port, () => {
   console.log(`Web server listening on port ${port}`);
 });

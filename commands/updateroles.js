@@ -2,24 +2,32 @@ const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js'
 const axios = require('axios');
 const noblox = require('noblox.js');
 const config = require('../config.json');
-const { db } = require('../database.js'); // Import the database
+const { db } = require('../database.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('updateroles')
         .setDescription('Updates your Discord roles based on your verified Roblox account.'),
     async execute(interaction) {
-        // --- SECURITY CHECK: Ensure command is only used in the authorized server ---
+        // --- SECURITY CHECK ---
         if (interaction.guild.id !== process.env.DISCORD_GUILD_ID) {
             return await interaction.reply({ content: 'This command cannot be used here.', flags: [MessageFlags.Ephemeral] });
         }
 
-        await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+        // --- SAFER DEFER ---
+        try {
+            await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+        } catch (error) {
+            console.error('[ERROR] Failed to defer interaction:', error);
+            // If we can't defer, we can't do anything else.
+            return;
+        }
+        // --- END SAFER DEFER ---
+
         const userId = interaction.user.id;
         const member = interaction.member;
-        const groupId = 34630184; // Your group ID
+        const groupId = 34630184;
 
-        // --- DATABASE LOOKUP LOGIC ---
         const stmt = db.prepare('SELECT * FROM verified_users WHERE discord_id = ?');
         const userData = stmt.get(userId);
 
@@ -29,7 +37,6 @@ module.exports = {
 
         const robloxUsername = userData.roblox_username;
         console.log(`[DATABASE] Found verified user ${interaction.user.tag} -> ${robloxUsername}`);
-        // --- END DATABASE LOOKUP LOGIC ---
 
         try {
             const robloxId = await noblox.getIdFromUsername(robloxUsername);
